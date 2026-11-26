@@ -24,4 +24,9 @@
     <Folder Include="ViewModels\" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\LigaArmenia.Application\LigaArmenia.Application.csproj" />
+    <ProjectReference Include="..\LigaArmenia.Infrastructure\LigaArmenia.Infrastructure.csproj" />
+  </ItemGroup>
+
 </Project>
