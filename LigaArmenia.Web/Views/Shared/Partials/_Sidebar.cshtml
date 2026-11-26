@@ -1,0 +1,167 @@
+@inject ICurrentUserService CurrentUser
+@inject IUserSecurityStateService SecurityStateService
+@inject IWebAssetHelper Assets
+@{
+    UserSecurityState? state = null;
+    if (CurrentUser.UserId.HasValue)
+    {
+        state = await SecurityStateService.GetStateAsync(CurrentUser.UserId.Value);
+    }
+
+    var currentController = ViewContext.RouteData.Values["controller"]?.ToString() ?? string.Empty;
+    bool Can(string permission) => state?.HasPermission(permission) == true;
+    bool IsAdmin() => state?.IsAdmin == true;
+}
+
+<aside class="la-sidebar" aria-label="Navegación principal">
+    <a class="la-sidebar-brand" asp-controller="Home" asp-action="Index">
+        @if (Assets.Exists("images/branding/logo-sidebar.png"))
+        {
+            <img src="@Assets.ResolveUrl("images/branding/logo-sidebar.png")" alt="Liga Barrial La Armenia" class="la-brand-logo-img" />
+        }
+        else if (Assets.Exists("images/branding/logo-institucional.png"))
+        {
+            <img src="@Assets.ResolveUrl("images/branding/logo-institucional.png")" alt="Liga Barrial La Armenia" class="la-brand-logo-img" />
+        }
+        else
+        {
+            <span class="la-brand-placeholder" style="width: 38px; height: 38px; font-size: 0.82rem;" aria-hidden="true">LA</span>
+        }
+        <span class="la-brand-text">
+            <span class="la-brand-name">Liga La Armenia</span>
+            <span class="la-brand-sub">Gestión Deportiva</span>
+        </span>
+    </a>
+
+    <nav class="la-sidebar-nav">
+        <div class="la-nav-section-title">General</div>
+        <a class="la-nav-link @(currentController.Equals("Home", StringComparison.OrdinalIgnoreCase) ? "active" : "")"
+           asp-controller="Home" asp-action="Index">
+            <span class="la-nav-icon" aria-hidden="true">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+            </span>
+            <span class="la-nav-label">Panel Principal</span>
+        </a>
+
+        @if (Can(SystemPermissions.UsuariosConsultar) || Can(SystemPermissions.VocalesConsultar) || (IsAdmin() && Can(SystemPermissions.RolesConsultar)))
+        {
+            <div class="la-nav-section-title">Seguridad</div>
+
+            @if (Can(SystemPermissions.UsuariosConsultar))
+            {
+                <a class="la-nav-link @(currentController.Equals("Usuarios", StringComparison.OrdinalIgnoreCase) ? "active" : "")"
+                   asp-controller="Usuarios" asp-action="Index">
+                    <span class="la-nav-icon" aria-hidden="true">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    </span>
+                    <span class="la-nav-label">Usuarios</span>
+                </a>
+            }
+
+            @if (Can(SystemPermissions.VocalesConsultar))
+            {
+                <a class="la-nav-link @(currentController.Equals("Vocales", StringComparison.OrdinalIgnoreCase) ? "active" : "")"
+                   asp-controller="Vocales" asp-action="Index">
+                    <span class="la-nav-icon" aria-hidden="true">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/><path d="m9 14 2 2 4-4"/></svg>
+                    </span>
+                    <span class="la-nav-label">Vocales</span>
+                </a>
+            }
+
+            @if (IsAdmin() && Can(SystemPermissions.RolesConsultar))
+            {
+                <a class="la-nav-link @(currentController.Equals("Roles", StringComparison.OrdinalIgnoreCase) ? "active" : "")"
+                   asp-controller="Roles" asp-action="Index">
+                    <span class="la-nav-icon" aria-hidden="true">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                    </span>
+                    <span class="la-nav-label">Roles y Permisos</span>
+                </a>
+            }
+        }
+
+        @* Estructura preparada para los módulos asignados a los demás integrantes (sin enlaces rotos) *@
+        @if (Can(SystemPermissions.CampeonatosConsultar) || Can(SystemPermissions.EquiposConsultar) || Can(SystemPermissions.PartidosConsultar))
+        {
+            <div class="la-nav-section-title">Gestión Deportiva</div>
+
+            @if (Can(SystemPermissions.CampeonatosConsultar))
+            {
+                <div class="la-nav-link la-nav-upcoming" title="Módulo en desarrollo">
+                    <span class="la-nav-icon" aria-hidden="true">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
+                    </span>
+                    <span class="la-nav-label">Campeonatos</span>
+                    <span class="la-nav-tag">Pronto</span>
+                </div>
+            }
+
+            @if (Can(SystemPermissions.EquiposConsultar))
+            {
+                <div class="la-nav-link la-nav-upcoming" title="Módulo en desarrollo">
+                    <span class="la-nav-icon" aria-hidden="true">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 4.24 4.24"/><path d="m14.83 9.17 4.24-4.24"/><path d="m14.83 14.83 4.24 4.24"/><path d="m9.17 14.83-4.24 4.24"/><circle cx="12" cy="12" r="4"/></svg>
+                    </span>
+                    <span class="la-nav-label">Equipos y Jugadores</span>
+                    <span class="la-nav-tag">Pronto</span>
+                </div>
+            }
+
+            @if (Can(SystemPermissions.PartidosConsultar))
+            {
+                <div class="la-nav-link la-nav-upcoming" title="Módulo en desarrollo">
+                    <span class="la-nav-icon" aria-hidden="true">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    </span>
+                    <span class="la-nav-label">Partidos y Horarios</span>
+                    <span class="la-nav-tag">Pronto</span>
+                </div>
+            }
+        }
+
+        @if (Can(SystemPermissions.VocaliasRevisar) || Can(SystemPermissions.SancionesConsultar) || Can(SystemPermissions.ReportesConsultar))
+        {
+            <div class="la-nav-section-title">Control y Reportes</div>
+
+            @if (Can(SystemPermissions.VocaliasRevisar))
+            {
+                <div class="la-nav-link la-nav-upcoming" title="Módulo en desarrollo">
+                    <span class="la-nav-icon" aria-hidden="true">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                    </span>
+                    <span class="la-nav-label">Vocalías</span>
+                    <span class="la-nav-tag">Pronto</span>
+                </div>
+            }
+
+            @if (Can(SystemPermissions.SancionesConsultar))
+            {
+                <div class="la-nav-link la-nav-upcoming" title="Módulo en desarrollo">
+                    <span class="la-nav-icon" aria-hidden="true">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    </span>
+                    <span class="la-nav-label">Sanciones</span>
+                    <span class="la-nav-tag">Pronto</span>
+                </div>
+            }
+
+            @if (Can(SystemPermissions.ReportesConsultar))
+            {
+                <div class="la-nav-link la-nav-upcoming" title="Módulo en desarrollo">
+                    <span class="la-nav-icon" aria-hidden="true">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                    </span>
+                    <span class="la-nav-label">Reportes y Posiciones</span>
+                    <span class="la-nav-tag">Pronto</span>
+                </div>
+            }
+        }
+    </nav>
+
+    <div class="la-sidebar-footer">
+        <div class="la-nav-label" style="font-size: 0.75rem; color: var(--la-text-muted);">
+            Sesión segura activa
+        </div>
+    </div>
+</aside>

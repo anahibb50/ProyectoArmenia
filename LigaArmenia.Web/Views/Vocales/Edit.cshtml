@@ -1,0 +1,109 @@
+@model LigaArmenia.Web.ViewModels.Vocales.VocalEditViewModel
+@inject ICurrentUserService CurrentUser
+@inject IUserSecurityStateService SecurityStateService
+@{
+    ViewData["Title"] = "Editar Vocal";
+    UserSecurityState? state = CurrentUser.UserId.HasValue
+        ? await SecurityStateService.GetStateAsync(CurrentUser.UserId.Value)
+        : null;
+    bool canEditUser = state?.HasPermission(SystemPermissions.UsuariosEditar) == true;
+}
+
+<div class="la-page-header">
+    <div>
+        <span class="la-page-eyebrow">Vocales · Edición</span>
+        <h1 class="la-page-title">Editar Perfil de Vocal</h1>
+        <p class="la-page-description">
+            Actualiza los nombres completos y el teléfono del vocal. Los cambios de nombre se sincronizan automáticamente con su cuenta de usuario.
+        </p>
+    </div>
+    <a asp-action="Index" class="la-btn la-btn-secondary">Volver al listado</a>
+</div>
+
+<div class="la-card" style="max-width: 780px;">
+    <form asp-action="Edit" method="post" novalidate>
+        @Html.AntiForgeryToken()
+        <input type="hidden" asp-for="Id" />
+        <input type="hidden" asp-for="UsuarioId" />
+        <input type="hidden" asp-for="Correo" />
+        <input type="hidden" asp-for="Activo" />
+        <input type="hidden" asp-for="UsuarioActivo" />
+        <input type="hidden" asp-for="TieneRolVocal" />
+        <input type="hidden" asp-for="CreadoEn" />
+
+        <div asp-validation-summary="ModelOnly" role="alert"></div>
+
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-4 pb-3"
+             style="border-bottom: 1px solid var(--la-border-subtle);">
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                @if (Model.Activo)
+                {
+                    <span class="la-badge la-badge-success">
+                        <span class="la-status-dot la-status-dot-active"></span> Vocal activo
+                    </span>
+                }
+                else
+                {
+                    <span class="la-badge la-badge-danger">
+                        <span class="la-status-dot la-status-dot-inactive"></span> Vocal inactivo
+                    </span>
+                }
+
+                @if (Model.UsuarioId.HasValue)
+                {
+                    <span class="la-badge @(Model.UsuarioActivo ? "la-badge-neutral" : "la-badge-warning")">
+                        Cuenta de usuario: @(Model.UsuarioActivo ? "Activa" : "Inactiva")
+                    </span>
+                }
+            </div>
+
+            @if (canEditUser && Model.UsuarioId.HasValue)
+            {
+                <a asp-controller="Usuarios" asp-action="Edit" asp-route-id="@Model.UsuarioId.Value" class="la-btn la-btn-secondary la-btn-sm">
+                    Gestionar cuenta en Usuarios
+                </a>
+            }
+        </div>
+
+        <div class="row g-3 mb-4">
+            <div class="col-md-6">
+                <label asp-for="Nombres" class="la-form-label"></label>
+                <input asp-for="Nombres" class="la-form-control" maxlength="180" />
+                <span asp-validation-for="Nombres" class="la-validation-error"></span>
+            </div>
+
+            <div class="col-md-6">
+                <label asp-for="Telefono" class="la-form-label"></label>
+                <input asp-for="Telefono" class="la-form-control" type="tel" maxlength="35" placeholder="Ej. 0991234567" />
+                <div class="la-form-hint">Opcional. Máximo 35 caracteres.</div>
+                <span asp-validation-for="Telefono" class="la-validation-error"></span>
+            </div>
+
+            <div class="col-md-6">
+                <label class="la-form-label">Correo electrónico asociado</label>
+                <input type="text"
+                       class="la-form-control"
+                       value="@(string.IsNullOrWhiteSpace(Model.Correo) ? "Sin cuenta asociada" : Model.Correo)"
+                       disabled />
+                <div class="la-form-hint">El correo, contraseña y roles se administran desde el módulo de Usuarios.</div>
+            </div>
+
+            <div class="col-md-6">
+                <label class="la-form-label">Fecha de registro</label>
+                <input type="text"
+                       class="la-form-control"
+                       value="@Model.CreadoEn.ToLocalTime().ToString("dd/MM/yyyy HH:mm")"
+                       disabled />
+            </div>
+        </div>
+
+        <div class="d-flex flex-wrap gap-2">
+            <button type="submit" class="la-btn la-btn-primary">Guardar cambios</button>
+            <a asp-action="Index" class="la-btn la-btn-secondary">Cancelar</a>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

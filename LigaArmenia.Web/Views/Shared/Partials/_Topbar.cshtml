@@ -1,0 +1,65 @@
+@inject ICurrentUserService CurrentUser
+@inject IUserSecurityStateService SecurityStateService
+@{
+    UserSecurityState? state = null;
+    if (CurrentUser.UserId.HasValue)
+    {
+        state = await SecurityStateService.GetStateAsync(CurrentUser.UserId.Value);
+    }
+
+    var displayName = state?.Nombres ?? CurrentUser.FullName ?? "Usuario";
+    var displayEmail = state?.Correo ?? CurrentUser.Email ?? string.Empty;
+    var primaryRole = state?.Roles.FirstOrDefault() ?? "USUARIO";
+    var initials = string.Join("", displayName
+        .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+        .Take(2)
+        .Select(part => char.ToUpperInvariant(part[0])));
+    if (string.IsNullOrEmpty(initials)) initials = "LA";
+}
+
+<header class="la-topbar">
+    <div class="la-topbar-left">
+        <button type="button" class="la-icon-btn" data-sidebar-toggle aria-label="Mostrar u ocultar menú lateral">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <div>
+            <div style="font-size: 0.92rem; font-weight: 600; color: var(--la-text-primary);">
+                @(ViewData["Title"] ?? "Panel")
+            </div>
+        </div>
+    </div>
+
+    <div class="dropdown">
+        <button class="la-user-menu-btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+            <span class="la-avatar" aria-hidden="true">@initials</span>
+            <span class="la-user-meta">
+                <span class="la-user-name">@displayName</span>
+                <span class="la-user-role">@primaryRole.Replace("_", " ")</span>
+            </span>
+        </button>
+        <div class="dropdown-menu dropdown-menu-end la-dropdown-menu">
+            <div class="px-3 py-2 border-bottom" style="border-color: var(--la-border-subtle) !important;">
+                <div class="fw-semibold" style="font-size: 0.88rem; color: var(--la-text-primary);">@displayName</div>
+                <div style="font-size: 0.78rem; color: var(--la-text-secondary);">@displayEmail</div>
+                @if (state is not null && state.Roles.Count > 0)
+                {
+                    <div class="d-flex flex-wrap gap-1 mt-2">
+                        @foreach (var role in state.Roles)
+                        {
+                            <span class="la-badge la-badge-success">@role.Replace("_", " ")</span>
+                        }
+                    </div>
+                }
+            </div>
+            <div class="pt-2">
+                <form asp-controller="Account" asp-action="Logout" method="post" class="m-0">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="dropdown-item d-flex align-items-center gap-2 text-danger">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                        <span>Cerrar sesión</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</header>

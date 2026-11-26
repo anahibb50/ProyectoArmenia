@@ -1,0 +1,64 @@
+@model LigaArmenia.Web.ViewModels.Roles.RolIndexViewModel
+@{
+    ViewData["Title"] = "Roles y Permisos";
+}
+
+<div class="la-page-header">
+    <div>
+        <span class="la-page-eyebrow">Seguridad · RBAC</span>
+        <h1 class="la-page-title">Roles y Permisos del Sistema</h1>
+        <p class="la-page-description">
+            Consulta los roles institucionales, los usuarios vinculados y administra sus permisos por módulo.
+        </p>
+    </div>
+</div>
+
+@if (Model.Roles.Count == 0)
+{
+    <div class="la-empty-state">
+        <h2 class="la-card-title mb-2">No existen roles registrados</h2>
+        <p style="color: var(--la-text-secondary);">Verifica la configuración inicial en la base de datos.</p>
+    </div>
+}
+else
+{
+    <div class="row g-3">
+        @foreach (var rol in Model.Roles)
+        {
+            <div class="col-md-6 col-xl-4">
+                <div class="la-card la-card-interactive h-100 d-flex flex-column justify-content-between">
+                    <div>
+                        <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                            <span class="la-badge @(rol.EsAdministrador ? "la-badge-success" : "la-badge-neutral")">
+                                @(rol.EsAdministrador ? "Rol protegido" : "Rol institucional")
+                            </span>
+                            <span style="font-size: 0.8rem; color: var(--la-text-muted);">
+                                @rol.TotalPermisos permisos
+                            </span>
+                        </div>
+
+                        <h2 class="la-card-title mb-2" style="font-size: 1.15rem;">
+                            @rol.Nombre.Replace("_", " ")
+                        </h2>
+
+                        <p style="font-size: 0.88rem; color: var(--la-text-secondary); min-height: 2.6rem;">
+                            @(string.IsNullOrWhiteSpace(rol.Descripcion) ? "Sin descripción registrada." : rol.Descripcion)
+                        </p>
+                    </div>
+
+                    <div>
+                        <div class="d-flex align-items-center justify-content-between py-2 mb-3"
+                             style="border-top: 1px solid var(--la-border-subtle); border-bottom: 1px solid var(--la-border-subtle); font-size: 0.83rem; color: var(--la-text-secondary);">
+                            <span>Usuarios asignados</span>
+                            <strong style="color: var(--la-text-primary);">@rol.TotalUsuariosActivos activos / @rol.TotalUsuarios total</strong>
+                        </div>
+
+                        <a asp-action="ManagePermissions" asp-route-id="@rol.Id" class="la-btn la-btn-primary w-100 la-btn-sm">
+                            Gestionar permisos y usuarios
+                        </a>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}

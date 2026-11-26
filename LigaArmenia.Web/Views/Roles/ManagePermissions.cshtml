@@ -1,0 +1,151 @@
+@model LigaArmenia.Web.ViewModels.Roles.RolManagePermissionsViewModel
+@{
+    ViewData["Title"] = $"Permisos — {Model.Nombre.Replace("_", " ")}";
+}
+
+<div class="la-page-header">
+    <div>
+        <span class="la-page-eyebrow">Seguridad · Matriz de Permisos</span>
+        <h1 class="la-page-title">@Model.Nombre.Replace("_", " ")</h1>
+        <p class="la-page-description">
+            @(string.IsNullOrWhiteSpace(Model.Descripcion) ? "Administra los permisos asignados a este rol." : Model.Descripcion)
+        </p>
+    </div>
+    <a asp-action="Index" class="la-btn la-btn-secondary">Volver a roles</a>
+</div>
+
+@if (Model.EsAdministrador)
+{
+    <div class="la-alert la-alert-info">
+        <div>
+            <strong>Protección administrativa activa:</strong> Los permisos críticos de seguridad están bloqueados para el rol
+            <code>ADMINISTRADOR</code> con el fin de evitar que el sistema quede sin un administrador funcional.
+        </div>
+    </div>
+}
+
+<form asp-action="ManagePermissions"
+      method="post"
+      data-confirm-title="Guardar cambios de permisos"
+      data-confirm-message="¿Confirmas la actualización de permisos para el rol @Model.Nombre.Replace("_", " ")? Los cambios se aplicarán de inmediato a las sesiones vigentes de los usuarios con este rol."
+      data-confirm-button="Guardar permisos"
+      data-confirm-variant="primary">
+    @Html.AntiForgeryToken()
+    <input type="hidden" asp-for="RolId" />
+
+    <div class="row g-3 mb-4">
+        @foreach (var modulo in Model.Modulos)
+        {
+            <div class="col-md-6 col-xl-4">
+                <div class="la-perm-module h-100">
+                    <div class="la-perm-module-header">
+                        <div>
+                            <h2 class="la-card-title" style="font-size: 0.98rem;">@modulo.EtiquetaModulo</h2>
+                            <div style="font-size: 0.76rem; color: var(--la-text-muted);">
+                                @modulo.Permisos.Count permiso(s)
+                            </div>
+                        </div>
+                        <button type="button"
+                                class="la-btn la-btn-ghost la-btn-sm"
+                                data-module-toggle="@modulo.Modulo">
+                            Alternar
+                        </button>
+                    </div>
+
+                    <div class="d-flex flex-column gap-2">
+                        @foreach (var permiso in modulo.Permisos)
+                        {
+                            <label class="la-check-card">
+                                @if (permiso.EsCriticoBloqueado)
+                                {
+                                    <input type="hidden" name="SelectedPermissionIds" value="@permiso.Id" />
+                                    <input type="checkbox" checked disabled data-perm-module="@modulo.Modulo" />
+                                }
+                                else
+                                {
+                                    <input type="checkbox"
+                                           name="SelectedPermissionIds"
+                                           value="@permiso.Id"
+                                           checked="@permiso.Asignado"
+                                           data-perm-module="@modulo.Modulo" />
+                                }
+                                <span>
+                                    <span class="d-block la-perm-code">@permiso.Codigo</span>
+                                    @if (!string.IsNullOrWhiteSpace(permiso.Descripcion))
+                                    {
+                                        <span style="font-size: 0.8rem; color: var(--la-text-secondary);">@permiso.Descripcion</span>
+                                    }
+                                </span>
+                            </label>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="d-flex flex-wrap gap-2 mb-5">
+        <button type="submit" class="la-btn la-btn-primary">Guardar permisos del rol</button>
+        <a asp-action="Index" class="la-btn la-btn-secondary">Cancelar</a>
+    </div>
+</form>
+
+<div class="la-card">
+    <div class="la-card-header">
+        <div>
+            <h2 class="la-card-title">Usuarios asociados a este rol</h2>
+            <p class="la-card-subtitle">Cuentas que actualmente tienen asignado el rol @Model.Nombre.Replace("_", " ").</p>
+        </div>
+        <span class="la-badge la-badge-neutral">@Model.Usuarios.Count usuario(s)</span>
+    </div>
+
+    @if (Model.Usuarios.Count == 0)
+    {
+        <div class="la-empty-state py-4">
+            <p class="mb-0" style="color: var(--la-text-secondary);">No existen usuarios asignados a este rol actualmente.</p>
+        </div>
+    }
+    else
+    {
+        <div class="la-table-wrap">
+            <table class="la-table">
+                <thead>
+                    <tr>
+                        <th>Usuario</th>
+                        <th>Correo</th>
+                        <th>Estado</th>
+                        <th class="text-end">Acción</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var user in Model.Usuarios)
+                    {
+                        <tr>
+                            <td class="fw-semibold">@user.Nombres</td>
+                            <td style="color: var(--la-text-secondary);">@user.Correo</td>
+                            <td>
+                                @if (user.Activo)
+                                {
+                                    <span class="la-badge la-badge-success">
+                                        <span class="la-status-dot la-status-dot-active"></span> Activo
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="la-badge la-badge-danger">
+                                        <span class="la-status-dot la-status-dot-inactive"></span> Inactivo
+                                    </span>
+                                }
+                            </td>
+                            <td class="text-end">
+                                <a asp-controller="Usuarios" asp-action="Edit" asp-route-id="@user.Id" class="la-btn la-btn-secondary la-btn-sm">
+                                    Ver usuario
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

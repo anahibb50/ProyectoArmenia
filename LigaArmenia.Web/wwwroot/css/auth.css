@@ -1,0 +1,129 @@
+/* ============================================================
+   Pantallas de Autenticación y Acceso Denegado
+   ============================================================ */
+
+.la-auth-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 65% 55% at 50% -10%, rgba(0, 200, 117, 0.2), transparent 65%),
+    radial-gradient(circle at 12% 88%, rgba(6, 78, 59, 0.35), transparent 45%),
+    radial-gradient(circle at 90% 85%, rgba(16, 185, 129, 0.12), transparent 40%),
+    var(--la-bg-primary);
+}
+
+.la-auth-container {
+  width: 100%;
+  max-width: 1060px;
+  display: grid;
+  grid-template-columns: 1fr 1.05fr;
+  border-radius: var(--la-radius-xl);
+  overflow: hidden;
+  border: 1px solid var(--la-border-color);
+  background: rgba(16, 24, 20, 0.92);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(0, 200, 117, 0.08);
+}
+
+.la-auth-form-panel {
+  padding: 2.75rem 2.5rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  background: linear-gradient(180deg, rgba(20, 34, 28, 0.72) 0%, rgba(16, 24, 20, 0.96) 100%);
+}
+
+.la-auth-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  margin-bottom: 1.75rem;
+}
+
+.la-auth-brand-logo {
+  width: 52px;
+  height: 52px;
+  object-fit: contain;
+  border-radius: var(--la-radius-md);
+}
+
+.la-auth-heading {
+  font-size: 1.7rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--la-text-primary);
+  margin: 0 0 0.4rem;
+}
+
+.la-auth-subheading {
+  font-size: 0.92rem;
+  color: var(--la-text-secondary);
+  margin: 0 0 1.75rem;
+}
+
+.la-auth-visual-panel {
+  position: relative;
+  padding: 2.5rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  border-left: 1px solid var(--la-border-subtle);
+  background:
+    radial-gradient(circle at 75% 20%, rgba(0, 200, 117, 0.24), transparent 52%),
+    linear-gradient(145deg, #0D1D16 0%, #07110D 100%);
+  overflow: hidden;
+}
+
+.la-auth-hero-img {
+  width: 100%;
+  height: 290px;
+  object-fit: cover;
+  border-radius: var(--la-radius-lg);
+  border: 1px solid var(--la-border-accent);
+  box-shadow: var(--la-shadow-md);
+}
+
+.la-auth-feature-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+  margin-top: 1.5rem;
+}
+
+.la-auth-feature-item {
+  padding: 0.9rem;
+  border-radius: var(--la-radius-md);
+  background: rgba(20, 34, 28, 0.72);
+  border: 1px solid var(--la-border-subtle);
+}
+
+.la-auth-feature-item strong {
+  display: block;
+  font-size: 0.84rem;
+  color: var(--la-text-primary);
+  margin-bottom: 0.2rem;
+}
+
+.la-auth-feature-item span {
+  font-size: 0.76rem;
+  color: var(--la-text-secondary);
+}
+
+@media (max-width: 991.98px) {
+  .la-auth-container {
+    grid-template-columns: 1fr;
+    max-width: 480px;
+  }
+
+  .la-auth-visual-panel {
+    display: none;
+  }
+
+  .la-auth-form-panel {
+    padding: 2rem 1.5rem;
+  }
+}

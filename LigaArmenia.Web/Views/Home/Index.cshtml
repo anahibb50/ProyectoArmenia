@@ -1,8 +1,127 @@
 ﻿@{
-    ViewData["Title"] = "Home Page";
+    ViewData["Title"] = "Panel Principal";
+    var state = ViewBag.SecurityState as UserSecurityState;
+    bool Can(string permission) => state?.HasPermission(permission) == true;
+    bool IsAdmin() => state?.IsAdmin == true;
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+<div class="la-page-header">
+    <div>
+        <span class="la-page-eyebrow">Liga Barrial La Armenia</span>
+        <h1 class="la-page-title">Hola, @(state?.Nombres ?? User.Identity?.Name ?? "Usuario")</h1>
+        <p class="la-page-description">
+            Resumen de tu perfil institucional y accesos habilitados en el portal administrativo.
+        </p>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="la-stat-card h-100">
+            <div class="la-stat-label">Estado de cuenta</div>
+            <div class="la-stat-value d-flex align-items-center gap-2" style="font-size: 1.35rem;">
+                <span class="la-status-dot la-status-dot-active"></span>
+                <span>Activa</span>
+            </div>
+            <div class="la-stat-hint">Validación en servidor en tiempo real</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="la-stat-card h-100">
+            <div class="la-stat-label">Roles asignados</div>
+            <div class="la-stat-value">@(state?.Roles.Count ?? 0)</div>
+            <div class="la-stat-hint">
+                @if (state is not null && state.Roles.Count > 0)
+                {
+                    @string.Join(", ", state.Roles.Select(r => r.Replace("_", " ")))
+                }
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="la-stat-card h-100">
+            <div class="la-stat-label">Permisos activos</div>
+            <div class="la-stat-value">@(state?.Permissions.Count ?? 0)</div>
+            <div class="la-stat-hint">Aplicados a rutas web y API</div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+    @if (Can(SystemPermissions.UsuariosConsultar))
+    {
+        <div class="col-md-6 col-lg-4">
+            <div class="la-card la-card-interactive h-100 d-flex flex-column justify-content-between">
+                <div>
+                    <span class="la-badge la-badge-success mb-3">Módulo activo</span>
+                    <h2 class="la-card-title mb-2">Gestión de Usuarios</h2>
+                    <p style="color: var(--la-text-secondary); font-size: 0.88rem;">
+                        Administra cuentas administrativas y de vocales, asigna múltiples roles, activa o desactiva accesos y restablece contraseñas.
+                    </p>
+                </div>
+                <div class="mt-3">
+                    <a asp-controller="Usuarios" asp-action="Index" class="la-btn la-btn-primary la-btn-sm">
+                        Administrar usuarios
+                    </a>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (Can(SystemPermissions.VocalesConsultar))
+    {
+        <div class="col-md-6 col-lg-4">
+            <div class="la-card la-card-interactive h-100 d-flex flex-column justify-content-between">
+                <div>
+                    <span class="la-badge la-badge-success mb-3">Módulo activo</span>
+                    <h2 class="la-card-title mb-2">Gestión de Vocales</h2>
+                    <p style="color: var(--la-text-secondary); font-size: 0.88rem;">
+                        Consulta los perfiles de vocales registrados, actualiza su información de contacto y controla su disponibilidad operativa.
+                    </p>
+                </div>
+                <div class="mt-3">
+                    <a asp-controller="Vocales" asp-action="Index" class="la-btn la-btn-primary la-btn-sm">
+                        Administrar vocales
+                    </a>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (IsAdmin() && Can(SystemPermissions.RolesConsultar))
+    {
+        <div class="col-md-6 col-lg-4">
+            <div class="la-card la-card-interactive h-100 d-flex flex-column justify-content-between">
+                <div>
+                    <span class="la-badge la-badge-success mb-3">Módulo activo</span>
+                    <h2 class="la-card-title mb-2">Roles y Permisos</h2>
+                    <p style="color: var(--la-text-secondary); font-size: 0.88rem;">
+                        Consulta los roles institucionales, gestiona los permisos agrupados por módulo y revisa los usuarios vinculados a cada rol.
+                    </p>
+                </div>
+                <div class="mt-3">
+                    <a asp-controller="Roles" asp-action="Index" class="la-btn la-btn-primary la-btn-sm">
+                        Gestionar roles
+                    </a>
+                </div>
+            </div>
+        </div>
+    }
+
+    <div class="col-md-6 col-lg-4">
+        <div class="la-card h-100 d-flex flex-column justify-content-between">
+            <div>
+                <span class="la-badge la-badge-neutral mb-3">Módulos deportivos</span>
+                <h2 class="la-card-title mb-2">Integración en curso</h2>
+                <p style="color: var(--la-text-secondary); font-size: 0.88rem;">
+                    Los módulos de campeonatos, equipos, jugadores, partidos, vocalías, sanciones y reportes se habilitarán progresivamente en el menú lateral según tus permisos.
+                </p>
+            </div>
+            <div class="mt-3">
+                <span style="font-size: 0.8rem; color: var(--la-text-muted);">
+                    Arquitectura preparada con autorización por políticas.
+                </span>
+            </div>
+        </div>
+    </div>
 </div>
