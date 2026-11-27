@@ -1,0 +1,61 @@
+@model LigaArmenia.Web.ViewModels.Campeonato.ConfigurarDivisionViewModel
+@{
+    ViewData["Title"] = "Configurar " + Model.NombreCategoria;
+}
+
+<div class="la-page-header">
+    <div>
+        <span class="la-page-eyebrow">Campeonato · @Model.NombreCategoria</span>
+        <h1 class="la-page-title">Cupo y etapas</h1>
+        <p class="la-page-description">
+            Define cuántos equipos caben y cómo se juega cada etapa. La puntuación sigue en 3, 1 y 0.
+        </p>
+    </div>
+    <a asp-action="Index" class="la-btn la-btn-secondary">Volver</a>
+</div>
+
+<div class="la-card" style="max-width: 760px;">
+    <form asp-action="Configurar" method="post" novalidate>
+        @Html.AntiForgeryToken()
+        <input type="hidden" asp-for="Codigo" />
+        <input type="hidden" asp-for="NombreCategoria" />
+        <div asp-validation-summary="ModelOnly" class="la-validation-error mb-3"></div>
+
+        <div class="mb-4">
+            <label asp-for="CupoEquipos" class="la-form-label"></label>
+            <input asp-for="CupoEquipos" class="la-form-control" type="number" min="1" max="99" style="max-width: 160px;" />
+            <div class="la-form-hint">Cantidad máxima de equipos de esta división en la temporada.</div>
+            <span asp-validation-for="CupoEquipos" class="la-validation-error"></span>
+        </div>
+
+        <h2 class="la-card-title mb-3">Etapas</h2>
+        <p style="color: var(--la-text-secondary); font-size: 0.9rem;">
+            Completa la etapa 1. La 2 y la 3 quedan vacías si esta división no las usa.
+        </p>
+
+        @for (var i = 0; i < Model.Etapas.Count; i++)
+        {
+            <div class="row g-3 mb-3">
+                <input type="hidden" asp-for="Etapas[i].Numero" />
+                <div class="col-md-5">
+                    <label class="la-form-label" asp-for="Etapas[i].Nombre">Etapa @Model.Etapas[i].Numero</label>
+                    <input asp-for="Etapas[i].Nombre" class="la-form-control" maxlength="40" placeholder="Nombre de la etapa" />
+                    <span asp-validation-for="Etapas[i].Nombre" class="la-validation-error"></span>
+                </div>
+                <div class="col-md-7">
+                    <label class="la-form-label" asp-for="Etapas[i].Formato">Formato</label>
+                    <select asp-for="Etapas[i].Formato" class="la-form-select">
+                        <option value="TODOS_CONTRA_TODOS">Todos contra todos</option>
+                        <option value="CUADRANGULARES">Cuadrangulares</option>
+                        <option value="ELIMINACION">Eliminación</option>
+                    </select>
+                </div>
+            </div>
+        }
+
+        <div class="d-flex gap-2">
+            <button type="submit" class="la-btn la-btn-primary">Guardar división</button>
+            <a asp-action="Index" class="la-btn la-btn-secondary">Cancelar</a>
+        </div>
+    </form>
+</div>

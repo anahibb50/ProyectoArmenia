@@ -7,6 +7,7 @@ public interface ICampeonatoRepository
     Task<Temporada?> GetTemporadaConCategoriasAsync(string nombre, CancellationToken cancellationToken = default);
     Task AddTemporadaAsync(Temporada temporada, CancellationToken cancellationToken = default);
     Task<int> CountEquiposAsync(short categoriaId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<Equipo>> ListEquiposAsync(long temporadaId, CancellationToken cancellationToken = default);
     Task<bool> ExisteNombreEnCategoriaAsync(long temporadaId, short categoriaId, string nombre, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<short>> NumerosDeEtapaConPartidosAsync(short categoriaId, CancellationToken cancellationToken = default);
     Task AddEquipoAsync(Equipo equipo, CancellationToken cancellationToken = default);

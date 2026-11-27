@@ -7,6 +7,8 @@ public interface ICampeonatoService
 {
     Task<OperationResult<TemporadaConfiguradaDto>> AsegurarTemporadaInicialAsync(CancellationToken cancellationToken = default);
 
+    Task<OperationResult<PanelCampeonatoDto>> ObtenerPanelAsync(CancellationToken cancellationToken = default);
+
     Task<OperationResult<EquipoCreadoDto>> RegistrarEquipoAsync(
         string codigoCategoria,
         string nombre,

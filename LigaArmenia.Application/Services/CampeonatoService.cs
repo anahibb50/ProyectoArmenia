@@ -37,6 +37,29 @@ public sealed class CampeonatoService : ICampeonatoService
         }, cancellationToken);
     }
 
+    public async Task<OperationResult<PanelCampeonatoDto>> ObtenerPanelAsync(CancellationToken cancellationToken = default)
+    {
+        var temporada = await AsegurarTemporadaInicialAsync(cancellationToken);
+        if (!temporada.Succeeded || temporada.Data is null)
+        {
+            return OperationResult<PanelCampeonatoDto>.Fail(
+                temporada.Message ?? "No se pudo preparar la temporada 2026-2027.");
+        }
+
+        var equipos = await _repository.ListEquiposAsync(temporada.Data.TemporadaId, cancellationToken);
+        return OperationResult<PanelCampeonatoDto>.Ok(new PanelCampeonatoDto
+        {
+            Temporada = temporada.Data,
+            Equipos = equipos.Select(e => new EquipoListadoDto
+            {
+                Id = e.Id,
+                CategoriaId = e.CategoriaId,
+                Nombre = e.Nombre,
+                Activo = e.Activo
+            }).ToList()
+        });
+    }
+
     public Task<OperationResult<EquipoCreadoDto>> RegistrarEquipoAsync(
         string codigoCategoria,
         string nombre,

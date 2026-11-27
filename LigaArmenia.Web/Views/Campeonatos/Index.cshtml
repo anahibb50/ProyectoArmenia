@@ -1,0 +1,133 @@
+@model LigaArmenia.Web.ViewModels.Campeonato.CampeonatoIndexViewModel
+@inject ICurrentUserService CurrentUser
+@inject IUserSecurityStateService SecurityStateService
+@{
+    ViewData["Title"] = "Campeonato";
+    UserSecurityState? state = CurrentUser.UserId.HasValue
+        ? await SecurityStateService.GetStateAsync(CurrentUser.UserId.Value)
+        : null;
+    bool canGestionarCampeonato = state?.HasPermission(SystemPermissions.CampeonatosGestionar) == true;
+    bool canGestionarEquipos = state?.HasPermission(SystemPermissions.EquiposGestionar) == true;
+
+    string Formato(string codigo) => codigo switch
+    {
+        "TODOS_CONTRA_TODOS" => "Todos contra todos",
+        "CUADRANGULARES" => "Cuadrangulares",
+        "ELIMINACION" => "Eliminación",
+        _ => codigo
+    };
+}
+
+<div class="la-page-header">
+    <div>
+        <span class="la-page-eyebrow">Gestión deportiva · Temporada @Model.NombreTemporada</span>
+        <h1 class="la-page-title">Campeonato</h1>
+        <p class="la-page-description">
+            Sénior A y Sénior B ya tienen cupo, etapas y puntuación. Infantil y Femenino se configuran cuando la Liga defina su formato.
+        </p>
+    </div>
+</div>
+
+@if (Model.Categorias.Count == 0)
+{
+    <div class="la-empty-state">
+        <h2 class="la-card-title mb-2">La temporada no está disponible</h2>
+        <p style="color: var(--la-text-secondary);">Revisa la conexión con la base e intenta de nuevo.</p>
+    </div>
+}
+else
+{
+    <div class="row g-3">
+        @foreach (var categoria in Model.Categorias)
+        {
+            <div class="col-lg-6">
+                <div class="la-card h-100">
+                    <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+                        <div>
+                            <span class="la-badge @(categoria.EsConfigurable ? "la-badge-neutral" : "la-badge-success") mb-2">
+                                @(categoria.EsConfigurable ? "Cupo por definir" : "Formato fijo")
+                            </span>
+                            <h2 class="la-card-title mb-1">@categoria.Nombre</h2>
+                            <p class="mb-0" style="color: var(--la-text-secondary); font-size: 0.9rem;">
+                                @(string.IsNullOrEmpty(categoria.Serie) ? "División única" : $"Serie {categoria.Serie}")
+                                · Victoria @categoria.PuntosVictoria, empate @categoria.PuntosEmpate, derrota @categoria.PuntosDerrota
+                            </p>
+                        </div>
+                        <div class="text-end">
+                            <div class="la-stat-value" style="font-size: 1.6rem;">
+                                @categoria.EquiposRegistrados@(categoria.CupoEquipos is short cupo ? $"/{cupo}" : "")
+                            </div>
+                            <div class="la-stat-label">Equipos</div>
+                        </div>
+                    </div>
+
+                    @if (categoria.Etapas.Count == 0)
+                    {
+                        <p style="color: var(--la-text-secondary); font-size: 0.9rem;">Todavía no hay etapas. El partido de esta categoría se rechaza hasta configurarlas.</p>
+                    }
+                    else
+                    {
+                        <ul class="mb-3" style="color: var(--la-text-secondary); font-size: 0.9rem;">
+                            @foreach (var etapa in categoria.Etapas)
+                            {
+                                <li>@etapa.Nombre · @Formato(etapa.Formato)</li>
+                            }
+                        </ul>
+                    }
+
+                    @if (canGestionarCampeonato && categoria.EsConfigurable)
+                    {
+                        <a asp-action="Configurar" asp-route-codigo="@categoria.Codigo" class="la-btn la-btn-secondary la-btn-sm mb-3">
+                            Configurar cupo y etapas
+                        </a>
+                    }
+
+                    @if (categoria.Equipos.Count == 0)
+                    {
+                        <p class="mb-3" style="color: var(--la-text-muted); font-size: 0.88rem;">Ningún equipo registrado en esta categoría.</p>
+                    }
+                    else
+                    {
+                        <div class="la-table-wrap mb-3">
+                            <table class="la-table">
+                                <thead>
+                                    <tr>
+                                        <th>Equipo</th>
+                                        <th class="text-end">Estado</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var equipo in categoria.Equipos)
+                                    {
+                                        <tr>
+                                            <td>@equipo.Nombre</td>
+                                            <td class="text-end">
+                                                <span class="la-badge @(equipo.Activo ? "la-badge-success" : "la-badge-neutral")">
+                                                    @(equipo.Activo ? "Activo" : "Inactivo")
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+
+                    @if (canGestionarEquipos && !categoria.CupoLleno)
+                    {
+                        <form asp-action="RegistrarEquipo" method="post" class="d-flex gap-2">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="CodigoCategoria" value="@categoria.Codigo" />
+                            <input name="Nombre" class="la-form-control" maxlength="140" placeholder="Nombre del equipo" aria-label="Nombre del equipo en @categoria.Nombre" />
+                            <button type="submit" class="la-btn la-btn-primary">Agregar</button>
+                        </form>
+                    }
+                    else if (categoria.CupoLleno)
+                    {
+                        <p class="mb-0" style="color: var(--la-text-secondary); font-size: 0.88rem;">El cupo de esta categoría ya está completo.</p>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+}

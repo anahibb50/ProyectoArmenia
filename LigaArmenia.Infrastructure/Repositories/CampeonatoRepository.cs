@@ -32,6 +32,15 @@ public sealed class CampeonatoRepository : ICampeonatoRepository
         return _dbContext.Equipos.CountAsync(e => e.CategoriaId == categoriaId, cancellationToken);
     }
 
+    public async Task<IReadOnlyList<Equipo>> ListEquiposAsync(long temporadaId, CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.Equipos
+            .AsNoTracking()
+            .Where(e => e.TemporadaId == temporadaId)
+            .OrderBy(e => e.Nombre)
+            .ToListAsync(cancellationToken);
+    }
+
     public Task<bool> ExisteNombreEnCategoriaAsync(
         long temporadaId,
         short categoriaId,

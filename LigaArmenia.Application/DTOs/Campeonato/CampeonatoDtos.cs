@@ -36,6 +36,20 @@ public sealed class EtapaSolicitudDto
     public string Formato { get; init; } = string.Empty;
 }
 
+public sealed class EquipoListadoDto
+{
+    public long Id { get; init; }
+    public short CategoriaId { get; init; }
+    public string Nombre { get; init; } = string.Empty;
+    public bool Activo { get; init; }
+}
+
+public sealed class PanelCampeonatoDto
+{
+    public TemporadaConfiguradaDto Temporada { get; init; } = new();
+    public IReadOnlyList<EquipoListadoDto> Equipos { get; init; } = [];
+}
+
 public sealed class EquipoCreadoDto
 {
     public long Id { get; init; }
