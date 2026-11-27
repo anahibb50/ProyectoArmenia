@@ -12,6 +12,7 @@ public static class DependencyInjection
         services.AddScoped<IUsuarioService, UsuarioService>();
         services.AddScoped<IRolPermisoService, RolPermisoService>();
         services.AddScoped<IVocalService, VocalService>();
+        services.AddScoped<ICampeonatoService, CampeonatoService>();
         return services;
     }
 }

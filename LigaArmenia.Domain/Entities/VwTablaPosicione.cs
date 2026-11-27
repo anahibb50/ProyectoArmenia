@@ -34,4 +34,8 @@ public partial class VwTablaPosicione
     public long? Dg { get; set; }
 
     public long? Pts { get; set; }
+
+    public short? CategoriaId { get; set; }
+
+    public string? Categoria { get; set; }
 }

@@ -9,7 +9,9 @@ public partial class Partido
 
     public long TemporadaId { get; set; }
 
-    public char Serie { get; set; }
+    public short CategoriaId { get; set; }
+
+    public char? Serie { get; set; }
 
     public short Etapa { get; set; }
 
@@ -54,6 +56,8 @@ public partial class Partido
     public virtual ICollection<CambiosProgramacion> CambiosProgramacions { get; set; } = new List<CambiosProgramacion>();
 
     public virtual ICollection<CargosPartido> CargosPartidos { get; set; } = new List<CargosPartido>();
+
+    public virtual Categoria Categoria { get; set; } = null!;
 
     public virtual Usuario? CreadoPorNavigation { get; set; }
 

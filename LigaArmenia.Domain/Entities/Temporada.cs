@@ -27,6 +27,8 @@ public partial class Temporada
 
     public virtual Usuario? CreadoPorNavigation { get; set; }
 
+    public virtual ICollection<Categoria> Categorias { get; set; } = new List<Categoria>();
+
     public virtual ICollection<Equipo> Equipos { get; set; } = new List<Equipo>();
 
     public virtual ICollection<Partido> Partidos { get; set; } = new List<Partido>();

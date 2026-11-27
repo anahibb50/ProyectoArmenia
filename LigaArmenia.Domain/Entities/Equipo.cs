@@ -11,7 +11,9 @@ public partial class Equipo
 
     public string Nombre { get; set; } = null!;
 
-    public char Serie { get; set; }
+    public short CategoriaId { get; set; }
+
+    public char? Serie { get; set; }
 
     public bool Activo { get; set; }
 
@@ -32,6 +34,8 @@ public partial class Equipo
     public virtual ICollection<CambiosDesignacionVocal> CambiosDesignacionVocalEquipoNuevos { get; set; } = new List<CambiosDesignacionVocal>();
 
     public virtual ICollection<CargosPartido> CargosPartidos { get; set; } = new List<CargosPartido>();
+
+    public virtual Categoria Categoria { get; set; } = null!;
 
     public virtual Usuario? CreadoPorNavigation { get; set; }
 

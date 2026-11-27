@@ -22,11 +22,15 @@ public partial class LigaArmeniaDbContext : DbContext
 
     public virtual DbSet<CargosPartido> CargosPartidos { get; set; }
 
+    public virtual DbSet<Categoria> Categorias { get; set; }
+
     public virtual DbSet<DescansosEquipo> DescansosEquipos { get; set; }
 
     public virtual DbSet<DesignacionesVocalium> DesignacionesVocalia { get; set; }
 
     public virtual DbSet<Equipo> Equipos { get; set; }
+
+    public virtual DbSet<EtapaCategoria> EtapasCategoria { get; set; }
 
     public virtual DbSet<EventosPartido> EventosPartidos { get; set; }
 
@@ -473,14 +477,17 @@ public partial class LigaArmeniaDbContext : DbContext
 
             entity.ToTable("equipos", "ldbla");
 
-            entity.HasIndex(e => new { e.Id, e.TemporadaId, e.Serie }, "uq_equipos_clave_compuesta").IsUnique();
+            entity.HasIndex(e => new { e.Id, e.TemporadaId, e.CategoriaId }, "uq_equipos_clave_compuesta").IsUnique();
 
-            entity.HasIndex(e => new { e.TemporadaId, e.Nombre }, "uq_equipos_nombre").IsUnique();
+            entity.HasIndex(e => new { e.TemporadaId, e.CategoriaId, e.Nombre }, "uq_equipos_nombre_categoria").IsUnique();
+
+            entity.HasIndex(e => e.CategoriaId, "ix_equipos_categoria");
 
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.Activo)
                 .HasDefaultValue(true)
                 .HasColumnName("activo");
+            entity.Property(e => e.CategoriaId).HasColumnName("categoria_id");
             entity.Property(e => e.ActualizadoEn)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("actualizado_en");
@@ -505,10 +512,80 @@ public partial class LigaArmeniaDbContext : DbContext
                 .HasForeignKey(d => d.CreadoPor)
                 .HasConstraintName("equipos_creado_por_fkey");
 
+            entity.HasOne(d => d.Categoria).WithMany(p => p.Equipos)
+                .HasForeignKey(d => d.CategoriaId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("fk_equipos_categoria");
+
             entity.HasOne(d => d.Temporada).WithMany(p => p.Equipos)
                 .HasForeignKey(d => d.TemporadaId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("fk_equipos_temporada");
+        });
+
+        modelBuilder.Entity<Categoria>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("categorias_pkey");
+
+            entity.ToTable("categorias", "ldbla");
+
+            entity.HasIndex(e => new { e.TemporadaId, e.Codigo }, "uq_categorias_codigo").IsUnique();
+
+            entity.HasIndex(e => new { e.Id, e.TemporadaId }, "uq_categorias_id_temporada").IsUnique();
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.Codigo)
+                .HasMaxLength(20)
+                .HasColumnName("codigo");
+            entity.Property(e => e.CupoEquipos).HasColumnName("cupo_equipos");
+            entity.Property(e => e.Disciplina)
+                .HasMaxLength(20)
+                .HasColumnName("disciplina");
+            entity.Property(e => e.Nombre)
+                .HasMaxLength(80)
+                .HasColumnName("nombre");
+            entity.Property(e => e.PuntosDerrota)
+                .HasDefaultValue((short)0)
+                .HasColumnName("puntos_derrota");
+            entity.Property(e => e.PuntosEmpate)
+                .HasDefaultValue((short)1)
+                .HasColumnName("puntos_empate");
+            entity.Property(e => e.PuntosVictoria)
+                .HasDefaultValue((short)3)
+                .HasColumnName("puntos_victoria");
+            entity.Property(e => e.Serie)
+                .HasMaxLength(1)
+                .HasColumnName("serie");
+            entity.Property(e => e.TemporadaId).HasColumnName("temporada_id");
+
+            entity.HasOne(d => d.Temporada).WithMany(p => p.Categorias)
+                .HasForeignKey(d => d.TemporadaId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("fk_categorias_temporada");
+        });
+
+        modelBuilder.Entity<EtapaCategoria>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("etapas_categoria_pkey");
+
+            entity.ToTable("etapas_categoria", "ldbla");
+
+            entity.HasIndex(e => new { e.CategoriaId, e.Numero }, "uq_etapas_categoria").IsUnique();
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.CategoriaId).HasColumnName("categoria_id");
+            entity.Property(e => e.Formato)
+                .HasMaxLength(30)
+                .HasColumnName("formato");
+            entity.Property(e => e.Nombre)
+                .HasMaxLength(40)
+                .HasColumnName("nombre");
+            entity.Property(e => e.Numero).HasColumnName("numero");
+
+            entity.HasOne(d => d.Categoria).WithMany(p => p.Etapas)
+                .HasForeignKey(d => d.CategoriaId)
+                .OnDelete(DeleteBehavior.ClientCascade)
+                .HasConstraintName("fk_etapas_categoria");
         });
 
         modelBuilder.Entity<EventosPartido>(entity =>
@@ -752,7 +829,10 @@ public partial class LigaArmeniaDbContext : DbContext
 
             entity.HasIndex(e => new { e.Fecha, e.HorarioId }, "uq_partidos_unica_cancha").IsUnique();
 
+            entity.HasIndex(e => e.CategoriaId, "ix_partidos_categoria");
+
             entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.CategoriaId).HasColumnName("categoria_id");
             entity.Property(e => e.ActualizadoEn)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("actualizado_en");
@@ -802,6 +882,11 @@ public partial class LigaArmeniaDbContext : DbContext
                 .HasForeignKey(d => d.CreadoPor)
                 .HasConstraintName("partidos_creado_por_fkey");
 
+            entity.HasOne(d => d.Categoria).WithMany(p => p.Partidos)
+                .HasForeignKey(d => d.CategoriaId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("fk_partidos_categoria");
+
             entity.HasOne(d => d.Horario).WithMany(p => p.Partidos)
                 .HasForeignKey(d => d.HorarioId)
                 .HasConstraintName("fk_partidos_horario");
@@ -812,14 +897,14 @@ public partial class LigaArmeniaDbContext : DbContext
                 .HasConstraintName("fk_partidos_temporada");
 
             entity.HasOne(d => d.Equipo).WithMany(p => p.PartidoEquipos)
-                .HasPrincipalKey(p => new { p.Id, p.TemporadaId, p.Serie })
-                .HasForeignKey(d => new { d.EquipoLocalId, d.TemporadaId, d.Serie })
+                .HasPrincipalKey(p => new { p.Id, p.TemporadaId, p.CategoriaId })
+                .HasForeignKey(d => new { d.EquipoLocalId, d.TemporadaId, d.CategoriaId })
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("fk_partidos_local");
 
             entity.HasOne(d => d.EquipoNavigation).WithMany(p => p.PartidoEquipoNavigations)
-                .HasPrincipalKey(p => new { p.Id, p.TemporadaId, p.Serie })
-                .HasForeignKey(d => new { d.EquipoVisitanteId, d.TemporadaId, d.Serie })
+                .HasPrincipalKey(p => new { p.Id, p.TemporadaId, p.CategoriaId })
+                .HasForeignKey(d => new { d.EquipoVisitanteId, d.TemporadaId, d.CategoriaId })
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("fk_partidos_visitante");
         });
@@ -1417,6 +1502,10 @@ public partial class LigaArmeniaDbContext : DbContext
                 .HasMaxLength(1)
                 .HasColumnName("serie");
             entity.Property(e => e.TemporadaId).HasColumnName("temporada_id");
+            entity.Property(e => e.CategoriaId).HasColumnName("categoria_id");
+            entity.Property(e => e.Categoria)
+                .HasMaxLength(20)
+                .HasColumnName("categoria");
         });
 
         modelBuilder.Entity<VwVocaliasPorRevisar>(entity =>

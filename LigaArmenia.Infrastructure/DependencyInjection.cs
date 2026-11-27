@@ -37,6 +37,7 @@ public static class DependencyInjection
         services.AddScoped<IRolRepository, RolRepository>();
         services.AddScoped<IPermisoRepository, PermisoRepository>();
         services.AddScoped<IVocalRepository, VocalRepository>();
+        services.AddScoped<ICampeonatoRepository, CampeonatoRepository>();
 
         // Opciones de configuración
         services.Configure<AdminSeedOptions>(configuration.GetSection(AdminSeedOptions.SectionName));
