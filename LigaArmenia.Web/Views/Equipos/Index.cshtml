@@ -1,0 +1,162 @@
+@model LigaArmenia.Web.ViewModels.Equipos.EquiposIndexViewModel
+@inject ICurrentUserService CurrentUser
+@inject IUserSecurityStateService SecurityStateService
+@{
+    ViewData["Title"] = "Equipos y jugadores";
+    UserSecurityState? state = CurrentUser.UserId.HasValue
+        ? await SecurityStateService.GetStateAsync(CurrentUser.UserId.Value)
+        : null;
+    bool canGestionarEquipos = state?.HasPermission(SystemPermissions.EquiposGestionar) == true;
+    var categoriaActual = Model.Categorias.FirstOrDefault(c => c.Codigo == Model.CategoriaSeleccionada);
+    var categoriasAbiertas = Model.Categorias.Where(c => !c.CupoLleno).ToList();
+    bool cupoDeFiltroLleno = categoriaActual?.CupoLleno == true;
+}
+
+<div class="la-page-header">
+    <div>
+        <span class="la-page-eyebrow">
+            Temporada @Model.NombreTemporada
+            @(Model.EsTemporadaActual ? " · actual" : "")
+        </span>
+        <h1 class="la-page-title">Equipos y jugadores</h1>
+        <p class="la-page-description">
+            Aquí se registran los clubes de la temporada. Filtra por categoría y abre la nómina para cargar jugadores.
+        </p>
+    </div>
+    <form method="get" asp-action="Index" class="d-flex flex-wrap align-items-end gap-2">
+        @if (Model.Temporadas.Count > 0)
+        {
+            <div>
+                <label class="la-form-label" for="temporada">Temporada</label>
+                <select id="temporada" name="temporada" class="la-form-select" style="min-width: 180px;" onchange="this.form.submit()">
+                    @foreach (var temporada in Model.Temporadas)
+                    {
+                        if (temporada.Nombre == Model.NombreTemporada)
+                        {
+                            <option value="@temporada.Nombre" selected>@temporada.Nombre@(temporada.Activa ? " · actual" : "")</option>
+                        }
+                        else
+                        {
+                            <option value="@temporada.Nombre">@temporada.Nombre@(temporada.Activa ? " · actual" : "")</option>
+                        }
+                    }
+                </select>
+            </div>
+        }
+        <div>
+            <label class="la-form-label" for="categoria">Categoría</label>
+            <select id="categoria" name="categoria" class="la-form-select" style="min-width: 180px;" onchange="this.form.submit()">
+                @if (string.IsNullOrEmpty(Model.CategoriaSeleccionada))
+                {
+                    <option value="" selected>Todas</option>
+                }
+                else
+                {
+                    <option value="">Todas</option>
+                }
+                @foreach (var categoria in Model.Categorias)
+                {
+                    if (categoria.Codigo == Model.CategoriaSeleccionada)
+                    {
+                        <option value="@categoria.Codigo" selected>@categoria.Nombre</option>
+                    }
+                    else
+                    {
+                        <option value="@categoria.Codigo">@categoria.Nombre</option>
+                    }
+                }
+            </select>
+        </div>
+    </form>
+</div>
+
+@if (Model.Equipos.Count == 0)
+{
+    <div class="la-empty-state mb-3">
+        @if (Model.TotalEquipos == 0)
+        {
+            <h2 class="la-card-title mb-2">Todavía no hay equipos</h2>
+            <p style="color: var(--la-text-secondary);">El primer club de esta temporada se registra aquí, dentro de su categoría.</p>
+        }
+        else
+        {
+            <h2 class="la-card-title mb-2">No hay equipos en @categoriaActual?.Nombre</h2>
+            <p style="color: var(--la-text-secondary);">Prueba otra categoría o registra un club en esta.</p>
+        }
+    </div>
+}
+else
+{
+    <div class="la-card mb-3">
+        <div class="la-table-wrap">
+            <table class="la-table">
+                <thead>
+                    <tr>
+                        <th>Equipo</th>
+                        <th>Categoría</th>
+                        <th class="text-end">Nómina</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var equipo in Model.Equipos)
+                    {
+                        <tr>
+                            <td>
+                                @equipo.Nombre
+                                @if (!equipo.Activo)
+                                {
+                                    <span class="la-badge la-badge-neutral">Inactivo</span>
+                                }
+                            </td>
+                            <td>@equipo.Categoria</td>
+                            <td class="text-end">@equipo.Jugadores</td>
+                            <td class="text-end">
+                                <a asp-action="Nomina" asp-route-id="@equipo.Id" class="la-btn la-btn-secondary la-btn-sm">Ver nómina</a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@if (canGestionarEquipos && cupoDeFiltroLleno)
+{
+    <p style="color: var(--la-text-secondary);">El cupo de @categoriaActual?.Nombre ya está completo.</p>
+}
+else if (canGestionarEquipos && categoriasAbiertas.Count > 0)
+{
+    <div class="la-card" style="max-width: 720px;">
+        <h2 class="la-card-title mb-3">Registrar equipo</h2>
+        <form asp-action="Registrar" method="post" class="row g-3 align-items-end">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="Temporada" value="@Model.NombreTemporada" />
+            <input type="hidden" name="CategoriaFiltro" value="@Model.CategoriaSeleccionada" />
+            <div class="col-md-4">
+                <label class="la-form-label" for="codigoCategoria">Categoría</label>
+                <select id="codigoCategoria" name="CodigoCategoria" class="la-form-select">
+                    @foreach (var categoria in categoriasAbiertas)
+                    {
+                        if (categoria.Codigo == Model.CategoriaSeleccionada)
+                        {
+                            <option value="@categoria.Codigo" selected>@categoria.Nombre</option>
+                        }
+                        else
+                        {
+                            <option value="@categoria.Codigo">@categoria.Nombre</option>
+                        }
+                    }
+                </select>
+            </div>
+            <div class="col-md-5">
+                <label class="la-form-label" for="nombreEquipo">Nombre</label>
+                <input id="nombreEquipo" name="Nombre" class="la-form-control" maxlength="140" placeholder="Nombre del equipo" />
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="la-btn la-btn-primary w-100">Agregar</button>
+            </div>
+        </form>
+    </div>
+}

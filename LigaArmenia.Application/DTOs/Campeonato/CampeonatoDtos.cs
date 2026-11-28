@@ -1,9 +1,17 @@
 namespace LigaArmenia.Application.DTOs.Campeonato;
 
+public sealed class TemporadaResumenDto
+{
+    public long Id { get; init; }
+    public string Nombre { get; init; } = string.Empty;
+    public bool Activa { get; init; }
+}
+
 public sealed class TemporadaConfiguradaDto
 {
     public long TemporadaId { get; init; }
     public string Nombre { get; init; } = string.Empty;
+    public bool Activa { get; init; }
     public IReadOnlyList<CategoriaDto> Categorias { get; init; } = [];
 }
 
@@ -47,6 +55,8 @@ public sealed class EquipoListadoDto
 public sealed class PanelCampeonatoDto
 {
     public TemporadaConfiguradaDto Temporada { get; init; } = new();
+    public string SiguienteTemporada { get; init; } = string.Empty;
+    public IReadOnlyList<TemporadaResumenDto> Temporadas { get; init; } = [];
     public IReadOnlyList<EquipoListadoDto> Equipos { get; init; } = [];
 }
 

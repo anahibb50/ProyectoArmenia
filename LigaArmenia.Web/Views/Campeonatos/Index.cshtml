@@ -7,7 +7,7 @@
         ? await SecurityStateService.GetStateAsync(CurrentUser.UserId.Value)
         : null;
     bool canGestionarCampeonato = state?.HasPermission(SystemPermissions.CampeonatosGestionar) == true;
-    bool canGestionarEquipos = state?.HasPermission(SystemPermissions.EquiposGestionar) == true;
+    bool canConsultarEquipos = state?.HasPermission(SystemPermissions.EquiposConsultar) == true;
 
     string Formato(string codigo) => codigo switch
     {
@@ -20,13 +20,59 @@
 
 <div class="la-page-header">
     <div>
-        <span class="la-page-eyebrow">Gestión deportiva · Temporada @Model.NombreTemporada</span>
+        <span class="la-page-eyebrow">
+            Gestión deportiva · Temporada @Model.NombreTemporada
+            @(Model.EsTemporadaActual ? " · actual" : "")
+        </span>
         <h1 class="la-page-title">Campeonato</h1>
         <p class="la-page-description">
-            Sénior A y Sénior B ya tienen cupo, etapas y puntuación. Infantil y Femenino se configuran cuando la Liga defina su formato.
+            Aquí se define el formato de cada categoría. Los clubes se registran una sola vez, en Equipos y jugadores.
         </p>
     </div>
+    <div class="d-flex flex-wrap align-items-end gap-2">
+        @if (Model.Temporadas.Count > 0)
+        {
+            <form method="get" asp-action="Index">
+                <label class="la-form-label" for="temporada">Temporada</label>
+                <select id="temporada" name="temporada" class="la-form-select" style="min-width: 180px;" onchange="this.form.submit()">
+                    @foreach (var temporada in Model.Temporadas)
+                    {
+                        if (temporada.Nombre == Model.NombreTemporada)
+                        {
+                            <option value="@temporada.Nombre" selected>@temporada.Nombre@(temporada.Activa ? " · actual" : "")</option>
+                        }
+                        else
+                        {
+                            <option value="@temporada.Nombre">@temporada.Nombre@(temporada.Activa ? " · actual" : "")</option>
+                        }
+                    }
+                </select>
+            </form>
+        }
+        @if (canGestionarCampeonato && !Model.EsTemporadaActual && !string.IsNullOrEmpty(Model.NombreTemporada))
+        {
+            <form asp-action="MarcarActual" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="temporada" value="@Model.NombreTemporada" />
+                <button type="submit" class="la-btn la-btn-secondary">Usar como temporada actual</button>
+            </form>
+        }
+        @if (canGestionarCampeonato && !string.IsNullOrEmpty(Model.SiguienteTemporada))
+        {
+            <form asp-action="AbrirSiguiente" method="post">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="la-btn la-btn-primary">Abrir @Model.SiguienteTemporada</button>
+            </form>
+        }
+    </div>
 </div>
+
+@if (!Model.EsTemporadaActual && !string.IsNullOrEmpty(Model.NombreTemporada))
+{
+    <p class="mb-3" style="color: var(--la-text-secondary);">
+        Estás viendo @Model.NombreTemporada, que no es la temporada actual.
+    </p>
+}
 
 @if (Model.Categorias.Count == 0)
 {
@@ -77,7 +123,7 @@ else
 
                     @if (canGestionarCampeonato && categoria.EsConfigurable)
                     {
-                        <a asp-action="Configurar" asp-route-codigo="@categoria.Codigo" class="la-btn la-btn-secondary la-btn-sm mb-3">
+                        <a asp-action="Configurar" asp-route-codigo="@categoria.Codigo" asp-route-temporada="@Model.NombreTemporada" class="la-btn la-btn-secondary la-btn-sm mb-3">
                             Configurar cupo y etapas
                         </a>
                     }
@@ -100,7 +146,13 @@ else
                                     @foreach (var equipo in categoria.Equipos)
                                     {
                                         <tr>
-                                            <td>@equipo.Nombre</td>
+                                            <td>
+                                                @equipo.Nombre
+                                                @if (canConsultarEquipos)
+                                                {
+                                                    <div><a asp-controller="Equipos" asp-action="Nomina" asp-route-id="@equipo.Id" style="color: var(--la-accent-primary); font-size: 0.82rem;">Nómina</a></div>
+                                                }
+                                            </td>
                                             <td class="text-end">
                                                 <span class="la-badge @(equipo.Activo ? "la-badge-success" : "la-badge-neutral")">
                                                     @(equipo.Activo ? "Activo" : "Inactivo")
@@ -113,18 +165,19 @@ else
                         </div>
                     }
 
-                    @if (canGestionarEquipos && !categoria.CupoLleno)
+                    @if (categoria.CupoLleno)
                     {
-                        <form asp-action="RegistrarEquipo" method="post" class="d-flex gap-2">
-                            @Html.AntiForgeryToken()
-                            <input type="hidden" name="CodigoCategoria" value="@categoria.Codigo" />
-                            <input name="Nombre" class="la-form-control" maxlength="140" placeholder="Nombre del equipo" aria-label="Nombre del equipo en @categoria.Nombre" />
-                            <button type="submit" class="la-btn la-btn-primary">Agregar</button>
-                        </form>
+                        <p class="mb-2" style="color: var(--la-text-secondary); font-size: 0.88rem;">El cupo de esta categoría ya está completo.</p>
                     }
-                    else if (categoria.CupoLleno)
+                    @if (canConsultarEquipos)
                     {
-                        <p class="mb-0" style="color: var(--la-text-secondary); font-size: 0.88rem;">El cupo de esta categoría ya está completo.</p>
+                        <a asp-controller="Equipos"
+                           asp-action="Index"
+                           asp-route-temporada="@Model.NombreTemporada"
+                           asp-route-categoria="@categoria.Codigo"
+                           class="la-btn la-btn-secondary la-btn-sm">
+                            Equipos de esta categoría
+                        </a>
                     }
                 </div>
             </div>

@@ -6,7 +6,16 @@ public sealed class CampeonatoIndexViewModel
 {
     public long TemporadaId { get; set; }
     public string NombreTemporada { get; set; } = string.Empty;
+    public bool EsTemporadaActual { get; set; }
+    public string SiguienteTemporada { get; set; } = string.Empty;
+    public IReadOnlyList<TemporadaOpcionViewModel> Temporadas { get; set; } = [];
     public IReadOnlyList<CategoriaPanelViewModel> Categorias { get; set; } = [];
+}
+
+public sealed class TemporadaOpcionViewModel
+{
+    public string Nombre { get; set; } = string.Empty;
+    public bool Activa { get; set; }
 }
 
 public sealed class CategoriaPanelViewModel
@@ -43,6 +52,9 @@ public sealed class EquipoPanelViewModel
 
 public sealed class RegistrarEquipoViewModel
 {
+    [Required(ErrorMessage = "Selecciona la temporada.")]
+    public string Temporada { get; set; } = string.Empty;
+
     [Required(ErrorMessage = "Selecciona la categoría.")]
     public string CodigoCategoria { get; set; } = string.Empty;
 
@@ -54,6 +66,9 @@ public sealed class RegistrarEquipoViewModel
 
 public sealed class ConfigurarDivisionViewModel
 {
+    [Required(ErrorMessage = "Selecciona la temporada.")]
+    public string Temporada { get; set; } = string.Empty;
+
     public string Codigo { get; set; } = string.Empty;
     public string NombreCategoria { get; set; } = string.Empty;
 

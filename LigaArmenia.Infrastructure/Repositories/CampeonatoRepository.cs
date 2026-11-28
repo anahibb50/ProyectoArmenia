@@ -22,6 +22,30 @@ public sealed class CampeonatoRepository : ICampeonatoRepository
             .FirstOrDefaultAsync(t => t.Nombre == nombre, cancellationToken);
     }
 
+    public async Task<IReadOnlyList<Temporada>> ListTemporadasAsync(CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.Temporadas
+            .AsNoTracking()
+            .OrderBy(t => t.Nombre)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task MarcarActivaAsync(long temporadaId, long? usuarioId, CancellationToken cancellationToken = default)
+    {
+        var temporadas = await _dbContext.Temporadas.ToListAsync(cancellationToken);
+        var ahora = DateTime.UtcNow;
+        foreach (var temporada in temporadas)
+        {
+            var activa = temporada.Id == temporadaId;
+            if (temporada.Activa == activa)
+                continue;
+
+            temporada.Activa = activa;
+            temporada.ActualizadoEn = ahora;
+            temporada.ActualizadoPor = usuarioId;
+        }
+    }
+
     public Task AddTemporadaAsync(Temporada temporada, CancellationToken cancellationToken = default)
     {
         return _dbContext.Temporadas.AddAsync(temporada, cancellationToken).AsTask();

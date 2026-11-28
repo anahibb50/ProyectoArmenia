@@ -1,12 +1,13 @@
 namespace LigaArmenia.Domain.Rules;
 
 /// <summary>
-/// Definición fija de la temporada 2026-2027.
+/// Plantilla de categorías de cada temporada.
 /// Sénior A y Sénior B no se reconfiguran. Infantil y Femenino nacen sin cupo ni etapas.
+/// La temporada vigente arranca en 2025-2026; las siguientes se abren año a año.
 /// </summary>
 public static class CatalogoTemporadaInicial
 {
-    public const string NombreTemporada = "2026-2027";
+    public const string TemporadaVigente = "2025-2026";
     public const string DisciplinaSenior = "SENIOR";
     public const string DisciplinaInfantil = "INFANTIL";
     public const string DisciplinaFemenino = "FEMENINO";
@@ -78,6 +79,29 @@ public static class CatalogoTemporadaInicial
             [],
             EsConfigurable: true)
     ];
+
+    public static bool TryParse(string? nombre, out int anioInicio)
+    {
+        anioInicio = 0;
+        var texto = (nombre ?? string.Empty).Trim();
+        var partes = texto.Split('-');
+        if (partes.Length != 2)
+            return false;
+
+        if (!int.TryParse(partes[0], out var inicio) || !int.TryParse(partes[1], out var fin))
+            return false;
+
+        if (inicio is < 2000 or > 2100 || fin != inicio + 1)
+            return false;
+
+        if (texto != $"{inicio}-{fin}")
+            return false;
+
+        anioInicio = inicio;
+        return true;
+    }
+
+    public static string Formatear(int anioInicio) => $"{anioInicio}-{anioInicio + 1}";
 
     public static string NormalizarCodigo(string? codigo)
     {

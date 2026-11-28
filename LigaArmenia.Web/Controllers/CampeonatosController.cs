@@ -19,9 +19,9 @@ public sealed class CampeonatosController : Controller
 
     [HttpGet]
     [Authorize(Policy = SystemPermissions.CampeonatosConsultar)]
-    public async Task<IActionResult> Index(CancellationToken cancellationToken)
+    public async Task<IActionResult> Index(string? temporada, CancellationToken cancellationToken)
     {
-        var panel = await _campeonatoService.ObtenerPanelAsync(cancellationToken);
+        var panel = await _campeonatoService.ObtenerPanelAsync(temporada, cancellationToken);
         if (!panel.Succeeded || panel.Data is null)
         {
             TempData["ErrorMessage"] = panel.Message ?? "No se pudo cargar la temporada.";
@@ -38,30 +38,64 @@ public sealed class CampeonatosController : Controller
     {
         if (!ModelState.IsValid)
         {
-            TempData["ErrorMessage"] = "Indica la categoría y el nombre del equipo.";
-            return RedirectToAction(nameof(Index));
+            TempData["ErrorMessage"] = "Indica la temporada, la categoría y el nombre del equipo.";
+            return RedirectToAction(nameof(Index), new { temporada = model.Temporada });
         }
 
-        var result = await _campeonatoService.RegistrarEquipoAsync(model.CodigoCategoria, model.Nombre, cancellationToken);
+        var result = await _campeonatoService.RegistrarEquipoAsync(
+            model.Temporada,
+            model.CodigoCategoria,
+            model.Nombre,
+            cancellationToken);
         if (!result.Succeeded)
         {
             TempData["ErrorMessage"] = result.Message;
-            return RedirectToAction(nameof(Index));
+            return RedirectToAction(nameof(Index), new { temporada = model.Temporada });
         }
 
         TempData["SuccessMessage"] = result.Message ?? "Equipo registrado.";
-        return RedirectToAction(nameof(Index));
+        return RedirectToAction(nameof(Index), new { temporada = model.Temporada });
+    }
+
+    [HttpPost]
+    [Authorize(Policy = SystemPermissions.CampeonatosGestionar)]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AbrirSiguiente(CancellationToken cancellationToken)
+    {
+        var result = await _campeonatoService.AbrirSiguienteTemporadaAsync(cancellationToken);
+        if (!result.Succeeded || string.IsNullOrWhiteSpace(result.Data))
+        {
+            TempData["ErrorMessage"] = result.Message ?? "No se pudo abrir la temporada.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        TempData["SuccessMessage"] = result.Message;
+        return RedirectToAction(nameof(Index), new { temporada = result.Data });
+    }
+
+    [HttpPost]
+    [Authorize(Policy = SystemPermissions.CampeonatosGestionar)]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> MarcarActual(string temporada, CancellationToken cancellationToken)
+    {
+        var result = await _campeonatoService.MarcarTemporadaActualAsync(temporada, cancellationToken);
+        if (!result.Succeeded)
+            TempData["ErrorMessage"] = result.Message;
+        else
+            TempData["SuccessMessage"] = result.Message;
+
+        return RedirectToAction(nameof(Index), new { temporada });
     }
 
     [HttpGet]
     [Authorize(Policy = SystemPermissions.CampeonatosGestionar)]
-    public async Task<IActionResult> Configurar(string codigo, CancellationToken cancellationToken)
+    public async Task<IActionResult> Configurar(string codigo, string temporada, CancellationToken cancellationToken)
     {
-        var categoria = await BuscarConfigurableAsync(codigo, cancellationToken);
+        var categoria = await BuscarConfigurableAsync(codigo, temporada, cancellationToken);
         if (categoria is null)
-            return RedirectToAction(nameof(Index));
+            return RedirectToAction(nameof(Index), new { temporada });
 
-        return View(MapConfigurar(categoria));
+        return View(MapConfigurar(categoria, temporada));
     }
 
     [HttpPost]
@@ -96,6 +130,7 @@ public sealed class CampeonatosController : Controller
         }
 
         var result = await _campeonatoService.ConfigurarDivisionAsync(
+            model.Temporada,
             model.Codigo,
             model.CupoEquipos!.Value,
             etapas.Select(e => new EtapaSolicitudDto
@@ -115,12 +150,12 @@ public sealed class CampeonatosController : Controller
         }
 
         TempData["SuccessMessage"] = result.Message ?? "División configurada.";
-        return RedirectToAction(nameof(Index));
+        return RedirectToAction(nameof(Index), new { temporada = model.Temporada });
     }
 
-    private async Task<CategoriaDto?> BuscarConfigurableAsync(string codigo, CancellationToken cancellationToken)
+    private async Task<CategoriaDto?> BuscarConfigurableAsync(string codigo, string temporada, CancellationToken cancellationToken)
     {
-        var panel = await _campeonatoService.ObtenerPanelAsync(cancellationToken);
+        var panel = await _campeonatoService.ObtenerPanelAsync(temporada, cancellationToken);
         if (!panel.Succeeded || panel.Data is null)
         {
             TempData["ErrorMessage"] = panel.Message ?? "No se pudo cargar la temporada.";
@@ -146,6 +181,13 @@ public sealed class CampeonatosController : Controller
         {
             TemporadaId = panel.Temporada.TemporadaId,
             NombreTemporada = panel.Temporada.Nombre,
+            EsTemporadaActual = panel.Temporada.Activa,
+            SiguienteTemporada = panel.SiguienteTemporada,
+            Temporadas = panel.Temporadas.Select(t => new TemporadaOpcionViewModel
+            {
+                Nombre = t.Nombre,
+                Activa = t.Activa
+            }).ToList(),
             Categorias = panel.Temporada.Categorias.Select(c =>
             {
                 var deLaCategoria = equipos.Where(e => e.CategoriaId == c.Id).ToList();
@@ -180,7 +222,7 @@ public sealed class CampeonatosController : Controller
         };
     }
 
-    private static ConfigurarDivisionViewModel MapConfigurar(CategoriaDto categoria)
+    private static ConfigurarDivisionViewModel MapConfigurar(CategoriaDto categoria, string temporada)
     {
         var etapas = new List<EtapaFormViewModel>
         {
@@ -201,6 +243,7 @@ public sealed class CampeonatosController : Controller
 
         return new ConfigurarDivisionViewModel
         {
+            Temporada = temporada,
             Codigo = categoria.Codigo,
             NombreCategoria = categoria.Nombre,
             CupoEquipos = categoria.CupoEquipos,

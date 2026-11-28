@@ -25,42 +25,60 @@ public sealed class CampeonatoService : ICampeonatoService
         _currentUser = currentUser;
     }
 
-    public Task<OperationResult<TemporadaConfiguradaDto>> AsegurarTemporadaInicialAsync(
+    public Task<OperationResult<PanelCampeonatoDto>> ObtenerPanelAsync(
+        string? nombreTemporada,
         CancellationToken cancellationToken = default)
     {
         return _transactionRunner.ExecuteAsync(async ct =>
         {
-            var temporada = await AsegurarTemporadaCoreAsync(ct);
-            return OperationResult<TemporadaConfiguradaDto>.Ok(
-                MapTemporada(temporada),
-                "La temporada 2026-2027 quedó configurada.");
+            await PrepararVigenteAsync(ct);
+            var temporada = await ResolverTemporadaAsync(nombreTemporada, crearSiNoExiste: false, ct);
+            if (temporada is null)
+            {
+                return OperationResult<PanelCampeonatoDto>.Fail(
+                    "Esa temporada no está abierta. Abre el año siguiente desde el campeonato.");
+            }
+
+            return OperationResult<PanelCampeonatoDto>.Ok(await MapPanelAsync(temporada, ct));
         }, cancellationToken);
     }
 
-    public async Task<OperationResult<PanelCampeonatoDto>> ObtenerPanelAsync(CancellationToken cancellationToken = default)
+    public Task<OperationResult<string>> AbrirSiguienteTemporadaAsync(CancellationToken cancellationToken = default)
     {
-        var temporada = await AsegurarTemporadaInicialAsync(cancellationToken);
-        if (!temporada.Succeeded || temporada.Data is null)
+        return _transactionRunner.ExecuteAsync(async ct =>
         {
-            return OperationResult<PanelCampeonatoDto>.Fail(
-                temporada.Message ?? "No se pudo preparar la temporada 2026-2027.");
-        }
+            await PrepararVigenteAsync(ct);
+            var temporadas = await _repository.ListTemporadasAsync(ct);
+            var siguiente = SiguienteNombre(temporadas.Select(t => t.Nombre));
+            var (_, creada) = await AsegurarTemporadaCoreAsync(siguiente, activaAlCrear: false, ct);
+            var mensaje = creada
+                ? $"La temporada {siguiente} quedó abierta. Los equipos que registres ahí pertenecen a ese año."
+                : $"La temporada {siguiente} ya estaba abierta.";
+            return OperationResult<string>.Ok(siguiente, mensaje);
+        }, cancellationToken);
+    }
 
-        var equipos = await _repository.ListEquiposAsync(temporada.Data.TemporadaId, cancellationToken);
-        return OperationResult<PanelCampeonatoDto>.Ok(new PanelCampeonatoDto
+    public Task<OperationResult> MarcarTemporadaActualAsync(
+        string nombreTemporada,
+        CancellationToken cancellationToken = default)
+    {
+        if (!CatalogoTemporadaInicial.TryParse(nombreTemporada, out _))
+            return Task.FromResult(OperationResult.Fail("La temporada debe tener el formato 2025-2026."));
+
+        return _transactionRunner.ExecuteAsync(async ct =>
         {
-            Temporada = temporada.Data,
-            Equipos = equipos.Select(e => new EquipoListadoDto
-            {
-                Id = e.Id,
-                CategoriaId = e.CategoriaId,
-                Nombre = e.Nombre,
-                Activo = e.Activo
-            }).ToList()
-        });
+            var temporada = await _repository.GetTemporadaConCategoriasAsync(nombreTemporada.Trim(), ct);
+            if (temporada is null)
+                return OperationResult.Fail("Esa temporada no está abierta.");
+
+            await _repository.MarcarActivaAsync(temporada.Id, _currentUser.UserId, ct);
+            await _repository.SaveChangesAsync(ct);
+            return OperationResult.Ok($"{temporada.Nombre} es ahora la temporada actual.");
+        }, cancellationToken);
     }
 
     public Task<OperationResult<EquipoCreadoDto>> RegistrarEquipoAsync(
+        string nombreTemporada,
         string codigoCategoria,
         string nombre,
         CancellationToken cancellationToken = default)
@@ -81,7 +99,10 @@ public sealed class CampeonatoService : ICampeonatoService
 
         return _transactionRunner.ExecuteAsync(async ct =>
         {
-            var temporada = await AsegurarTemporadaCoreAsync(ct);
+            var temporada = await ObtenerTemporadaAbiertaAsync(nombreTemporada, ct);
+            if (temporada is null)
+                return OperationResult<EquipoCreadoDto>.Fail("Selecciona una temporada abierta.");
+
             var categoria = BuscarCategoria(temporada, definicion.Codigo);
             if (categoria is null)
                 return OperationResult<EquipoCreadoDto>.Fail(MensajeCategoriaDesconocida());
@@ -127,11 +148,12 @@ public sealed class CampeonatoService : ICampeonatoService
                 CodigoCategoria = categoria.Codigo,
                 Nombre = equipo.Nombre,
                 Serie = equipo.Serie
-            }, "Equipo registrado.");
+            }, $"Equipo registrado en la temporada {temporada.Nombre}.");
         }, cancellationToken);
     }
 
     public Task<OperationResult<CategoriaDto>> ConfigurarDivisionAsync(
+        string nombreTemporada,
         string codigoCategoria,
         short cupoEquipos,
         IReadOnlyList<EtapaSolicitudDto> etapas,
@@ -154,7 +176,10 @@ public sealed class CampeonatoService : ICampeonatoService
 
         return _transactionRunner.ExecuteAsync(async ct =>
         {
-            var temporada = await AsegurarTemporadaCoreAsync(ct);
+            var temporada = await ObtenerTemporadaAbiertaAsync(nombreTemporada, ct);
+            if (temporada is null)
+                return OperationResult<CategoriaDto>.Fail("Selecciona una temporada abierta.");
+
             var categoria = BuscarCategoria(temporada, definicion.Codigo);
             if (categoria is null)
                 return OperationResult<CategoriaDto>.Fail(MensajeCategoriaDesconocida());
@@ -175,11 +200,12 @@ public sealed class CampeonatoService : ICampeonatoService
 
             return OperationResult<CategoriaDto>.Ok(
                 MapCategoria(categoria),
-                $"{categoria.Nombre} quedó configurada.");
+                $"{categoria.Nombre} quedó configurada en la temporada {temporada.Nombre}.");
         }, cancellationToken);
     }
 
     public Task<OperationResult> ValidarEtapaDePartidoAsync(
+        string nombreTemporada,
         string codigoCategoria,
         short numeroEtapa,
         CancellationToken cancellationToken = default)
@@ -196,7 +222,10 @@ public sealed class CampeonatoService : ICampeonatoService
 
         return _transactionRunner.ExecuteAsync(async ct =>
         {
-            var temporada = await AsegurarTemporadaCoreAsync(ct);
+            var temporada = await ObtenerTemporadaAbiertaAsync(nombreTemporada, ct);
+            if (temporada is null)
+                return OperationResult.Fail("Selecciona una temporada abierta.");
+
             var categoria = BuscarCategoria(temporada, definicion.Codigo);
             if (categoria is null)
                 return OperationResult.Fail(MensajeCategoriaDesconocida());
@@ -209,60 +238,163 @@ public sealed class CampeonatoService : ICampeonatoService
         }, cancellationToken);
     }
 
-    private async Task<Temporada> AsegurarTemporadaCoreAsync(CancellationToken cancellationToken)
+    private async Task PrepararVigenteAsync(CancellationToken cancellationToken)
     {
-        var ahora = DateTime.UtcNow;
-        var temporada = await _repository.GetTemporadaConCategoriasAsync(
-            CatalogoTemporadaInicial.NombreTemporada,
+        var (temporada, creada) = await AsegurarTemporadaCoreAsync(
+            CatalogoTemporadaInicial.TemporadaVigente,
+            activaAlCrear: true,
             cancellationToken);
 
+        if (!creada)
+            return;
+
+        await _repository.MarcarActivaAsync(temporada.Id, _currentUser.UserId, cancellationToken);
+        await _repository.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task<Temporada?> ResolverTemporadaAsync(
+        string? nombreTemporada,
+        bool crearSiNoExiste,
+        CancellationToken cancellationToken)
+    {
+        var nombre = (nombreTemporada ?? string.Empty).Trim();
+        if (!CatalogoTemporadaInicial.TryParse(nombre, out _))
+        {
+            var activas = await _repository.ListTemporadasAsync(cancellationToken);
+            var activa = activas.FirstOrDefault(t => t.Activa)
+                ?? activas.FirstOrDefault(t => t.Nombre == CatalogoTemporadaInicial.TemporadaVigente)
+                ?? activas.FirstOrDefault();
+            nombre = activa?.Nombre ?? CatalogoTemporadaInicial.TemporadaVigente;
+        }
+
+        if (crearSiNoExiste)
+        {
+            var (temporada, _) = await AsegurarTemporadaCoreAsync(nombre, activaAlCrear: false, cancellationToken);
+            return temporada;
+        }
+
+        return await ObtenerTemporadaAbiertaAsync(nombre, cancellationToken);
+    }
+
+    private async Task<Temporada?> ObtenerTemporadaAbiertaAsync(string nombreTemporada, CancellationToken cancellationToken)
+    {
+        if (!CatalogoTemporadaInicial.TryParse(nombreTemporada, out _))
+            return null;
+
+        var temporada = await _repository.GetTemporadaConCategoriasAsync(nombreTemporada.Trim(), cancellationToken);
         if (temporada is null)
-        {
-            temporada = new Temporada
-            {
-                Nombre = CatalogoTemporadaInicial.NombreTemporada,
-                Activa = true,
-                CreadoEn = ahora,
-                ActualizadoEn = ahora,
-                CreadoPor = _currentUser.UserId,
-                ActualizadoPor = _currentUser.UserId
-            };
+            return null;
 
-            foreach (var definicion in CatalogoTemporadaInicial.Categorias)
-                temporada.Categorias.Add(CrearCategoria(definicion));
-
-            await _repository.AddTemporadaAsync(temporada, cancellationToken);
-        }
-        else
-        {
-            temporada.ActualizadoEn = ahora;
-            temporada.ActualizadoPor = _currentUser.UserId;
-
-            foreach (var definicion in CatalogoTemporadaInicial.Categorias)
-            {
-                var categoria = BuscarCategoria(temporada, definicion.Codigo);
-                if (categoria is null)
-                {
-                    temporada.Categorias.Add(CrearCategoria(definicion));
-                    continue;
-                }
-
-                if (definicion.EsConfigurable)
-                    continue;
-
-                categoria.Nombre = definicion.Nombre;
-                categoria.Disciplina = definicion.Disciplina;
-                categoria.Serie = definicion.Serie;
-                categoria.CupoEquipos = definicion.CupoEquipos;
-                categoria.PuntosVictoria = definicion.PuntosVictoria;
-                categoria.PuntosEmpate = definicion.PuntosEmpate;
-                categoria.PuntosDerrota = definicion.PuntosDerrota;
-                await SincronizarEtapasAsync(categoria, definicion.Etapas, conservarEtapasConPartidos: true, cancellationToken);
-            }
-        }
-
+        await SincronizarDefinicionesAsync(temporada, cancellationToken);
         await _repository.SaveChangesAsync(cancellationToken);
         return temporada;
+    }
+
+    private async Task<(Temporada Temporada, bool Creada)> AsegurarTemporadaCoreAsync(
+        string nombre,
+        bool activaAlCrear,
+        CancellationToken cancellationToken)
+    {
+        var ahora = DateTime.UtcNow;
+        var temporada = await _repository.GetTemporadaConCategoriasAsync(nombre, cancellationToken);
+        if (temporada is not null)
+        {
+            await SincronizarDefinicionesAsync(temporada, cancellationToken);
+            await _repository.SaveChangesAsync(cancellationToken);
+            return (temporada, false);
+        }
+
+        temporada = new Temporada
+        {
+            Nombre = nombre,
+            Activa = activaAlCrear,
+            CreadoEn = ahora,
+            ActualizadoEn = ahora,
+            CreadoPor = _currentUser.UserId,
+            ActualizadoPor = _currentUser.UserId
+        };
+
+        foreach (var definicion in CatalogoTemporadaInicial.Categorias)
+            temporada.Categorias.Add(CrearCategoria(definicion));
+
+        await _repository.AddTemporadaAsync(temporada, cancellationToken);
+        await _repository.SaveChangesAsync(cancellationToken);
+        return (temporada, true);
+    }
+
+    private async Task SincronizarDefinicionesAsync(Temporada temporada, CancellationToken cancellationToken)
+    {
+        foreach (var definicion in CatalogoTemporadaInicial.Categorias)
+        {
+            var categoria = BuscarCategoria(temporada, definicion.Codigo);
+            if (categoria is null)
+            {
+                temporada.Categorias.Add(CrearCategoria(definicion));
+                continue;
+            }
+
+            if (definicion.EsConfigurable)
+                continue;
+
+            categoria.Nombre = definicion.Nombre;
+            categoria.Disciplina = definicion.Disciplina;
+            categoria.Serie = definicion.Serie;
+            categoria.CupoEquipos = definicion.CupoEquipos;
+            categoria.PuntosVictoria = definicion.PuntosVictoria;
+            categoria.PuntosEmpate = definicion.PuntosEmpate;
+            categoria.PuntosDerrota = definicion.PuntosDerrota;
+            await SincronizarEtapasAsync(categoria, definicion.Etapas, conservarEtapasConPartidos: true, cancellationToken);
+        }
+    }
+
+    private async Task<PanelCampeonatoDto> MapPanelAsync(Temporada temporada, CancellationToken cancellationToken)
+    {
+        var temporadas = await _repository.ListTemporadasAsync(cancellationToken);
+        var equipos = await _repository.ListEquiposAsync(temporada.Id, cancellationToken);
+        var resumen = temporadas.FirstOrDefault(t => t.Id == temporada.Id);
+        var configurada = MapTemporada(temporada);
+        if (resumen is not null)
+            configurada = new TemporadaConfiguradaDto
+            {
+                TemporadaId = configurada.TemporadaId,
+                Nombre = configurada.Nombre,
+                Activa = resumen.Activa,
+                Categorias = configurada.Categorias
+            };
+
+        return new PanelCampeonatoDto
+        {
+            Temporada = configurada,
+            SiguienteTemporada = SiguienteNombre(temporadas.Select(t => t.Nombre)),
+            Temporadas = temporadas.Select(t => new TemporadaResumenDto
+            {
+                Id = t.Id,
+                Nombre = t.Nombre,
+                Activa = t.Activa
+            }).ToList(),
+            Equipos = equipos.Select(e => new EquipoListadoDto
+            {
+                Id = e.Id,
+                CategoriaId = e.CategoriaId,
+                Nombre = e.Nombre,
+                Activo = e.Activo
+            }).ToList()
+        };
+    }
+
+    private static string SiguienteNombre(IEnumerable<string> nombres)
+    {
+        var maximo = 0;
+        foreach (var nombre in nombres)
+        {
+            if (CatalogoTemporadaInicial.TryParse(nombre, out var inicio) && inicio > maximo)
+                maximo = inicio;
+        }
+
+        if (maximo == 0 && CatalogoTemporadaInicial.TryParse(CatalogoTemporadaInicial.TemporadaVigente, out var vigente))
+            maximo = vigente - 1;
+
+        return CatalogoTemporadaInicial.Formatear(maximo + 1);
     }
 
     private async Task<string?> SincronizarEtapasAsync(
@@ -381,6 +513,7 @@ public sealed class CampeonatoService : ICampeonatoService
         {
             TemporadaId = temporada.Id,
             Nombre = temporada.Nombre,
+            Activa = temporada.Activa,
             Categorias = categorias
         };
     }
@@ -414,6 +547,6 @@ public sealed class CampeonatoService : ICampeonatoService
 
     private static string MensajeCategoriaDesconocida()
     {
-        return "La categoría indicada no forma parte de la temporada 2026-2027.";
+        return "La categoría indicada no forma parte de esta temporada.";
     }
 }

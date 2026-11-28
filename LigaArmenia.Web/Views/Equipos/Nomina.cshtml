@@ -1,0 +1,184 @@
+@model LigaArmenia.Web.ViewModels.Equipos.NominaViewModel
+@inject ICurrentUserService CurrentUser
+@inject IUserSecurityStateService SecurityStateService
+@{
+    ViewData["Title"] = "Nómina de " + Model.NombreEquipo;
+    UserSecurityState? state = CurrentUser.UserId.HasValue
+        ? await SecurityStateService.GetStateAsync(CurrentUser.UserId.Value)
+        : null;
+    bool canGestionar = state?.HasPermission(SystemPermissions.JugadoresGestionar) == true;
+
+    string Fecha(DateOnly? fecha) => fecha?.ToString("dd/MM/yyyy") ?? "—";
+}
+
+<div class="la-page-header">
+    <div>
+        <span class="la-page-eyebrow">@Model.NombreTemporada · @Model.NombreCategoria</span>
+        <h1 class="la-page-title">@Model.NombreEquipo</h1>
+        <p class="la-page-description">
+            Nómina del club. La condición de mayor de 50 se calcula con la fecha de nacimiento. Juvenil se marca aparte y no aplica a quien ya cumplió 50.
+        </p>
+    </div>
+    <a asp-action="Index" asp-route-temporada="@Model.NombreTemporada" class="la-btn la-btn-secondary">Volver</a>
+</div>
+
+@if (canGestionar)
+{
+    <div class="la-card mb-3">
+        <h2 class="la-card-title mb-3">Agregar jugador</h2>
+        <form asp-action="AgregarJugador" method="post" class="row g-3">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="EquipoId" value="@Model.EquipoId" />
+            <div class="col-md-3">
+                <label class="la-form-label" for="documento">Documento</label>
+                <input id="documento" name="Documento" class="la-form-control" maxlength="35" placeholder="Cédula o pasaporte" />
+            </div>
+            <div class="col-md-4">
+                <label class="la-form-label" for="nombres">Nombres</label>
+                <input id="nombres" name="Nombres" class="la-form-control" maxlength="180" placeholder="Apellidos y nombres" />
+            </div>
+            <div class="col-md-3">
+                <label class="la-form-label" for="nacimiento">Fecha de nacimiento</label>
+                <input id="nacimiento" name="FechaNacimiento" class="la-form-control" type="date" />
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button type="submit" class="la-btn la-btn-primary w-100">Agregar</button>
+            </div>
+            <div class="col-12 d-flex flex-wrap gap-4">
+                <label class="d-inline-flex align-items-center gap-2" style="color: var(--la-text-secondary);">
+                    <input type="checkbox" name="ConsideradoJuvenil" value="true" />
+                    Considerado juvenil
+                </label>
+                <label class="d-inline-flex align-items-center gap-2" style="color: var(--la-text-secondary);">
+                    <input type="checkbox" name="Habilitado" value="true" checked />
+                    Habilitado para jugar
+                </label>
+            </div>
+        </form>
+    </div>
+}
+
+<div class="la-card mb-3">
+    <h2 class="la-card-title mb-3">Nómina activa · @Model.Activos.Count</h2>
+    @if (Model.Activos.Count == 0)
+    {
+        <p class="mb-0" style="color: var(--la-text-secondary);">Esta nómina todavía no tiene jugadores.</p>
+    }
+    else
+    {
+        <div class="la-table-wrap">
+            <table class="la-table">
+                <thead>
+                    <tr>
+                        <th>Jugador</th>
+                        <th>Documento</th>
+                        <th>Nacimiento</th>
+                        <th>Condición</th>
+                        <th>Estado</th>
+                        @if (canGestionar)
+                        {
+                            <th></th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var jugador in Model.Activos)
+                    {
+                        <tr>
+                            <td>@jugador.Nombres</td>
+                            <td>@jugador.Documento</td>
+                            <td>
+                                @Fecha(jugador.FechaNacimiento)
+                                @if (jugador.Edad is int edad)
+                                {
+                                    <span style="color: var(--la-text-muted);">· @edad años</span>
+                                }
+                            </td>
+                            <td>
+                                @if (jugador.ConsideradoJuvenil)
+                                {
+                                    <span class="la-badge la-badge-success">Juvenil</span>
+                                }
+                                else if (jugador.MayorDe50)
+                                {
+                                    <span class="la-badge la-badge-warning">Mayor de 50</span>
+                                }
+                                else
+                                {
+                                    <span style="color: var(--la-text-muted);">—</span>
+                                }
+                            </td>
+                            <td>
+                                <span class="la-badge @(jugador.Habilitado ? "la-badge-success" : "la-badge-neutral")">
+                                    @(jugador.Habilitado ? "Habilitado" : "No habilitado")
+                                </span>
+                            </td>
+                            @if (canGestionar)
+                            {
+                                <td>
+                                    <div class="d-flex flex-wrap justify-content-end gap-2">
+                                        <form asp-action="CambiarHabilitacion" method="post">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="id" value="@jugador.MembresiaId" />
+                                            <input type="hidden" name="equipoId" value="@Model.EquipoId" />
+                                            <input type="hidden" name="habilitado" value="@(!jugador.Habilitado ? "true" : "false")" />
+                                            <button type="submit" class="la-btn la-btn-secondary la-btn-sm">
+                                                @(jugador.Habilitado ? "No habilitar" : "Habilitar")
+                                            </button>
+                                        </form>
+                                        @if (!jugador.MayorDe50)
+                                        {
+                                            <form asp-action="CambiarJuvenil" method="post">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="id" value="@jugador.MembresiaId" />
+                                                <input type="hidden" name="equipoId" value="@Model.EquipoId" />
+                                                <input type="hidden" name="juvenil" value="@(!jugador.ConsideradoJuvenil ? "true" : "false")" />
+                                                <button type="submit" class="la-btn la-btn-secondary la-btn-sm">
+                                                    @(jugador.ConsideradoJuvenil ? "Quitar juvenil" : "Marcar juvenil")
+                                                </button>
+                                            </form>
+                                        }
+                                        <form asp-action="DarDeBaja" method="post">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="id" value="@jugador.MembresiaId" />
+                                            <input type="hidden" name="equipoId" value="@Model.EquipoId" />
+                                            <button type="submit" class="la-btn la-btn-danger la-btn-sm">Dar de baja</button>
+                                        </form>
+                                    </div>
+                                </td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@if (Model.Bajas.Count > 0)
+{
+    <div class="la-card">
+        <h2 class="la-card-title mb-3">Salieron de la nómina</h2>
+        <div class="la-table-wrap">
+            <table class="la-table">
+                <thead>
+                    <tr>
+                        <th>Jugador</th>
+                        <th>Documento</th>
+                        <th>Baja</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var jugador in Model.Bajas)
+                    {
+                        <tr>
+                            <td>@jugador.Nombres</td>
+                            <td>@jugador.Documento</td>
+                            <td>@Fecha(jugador.FechaBaja)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
